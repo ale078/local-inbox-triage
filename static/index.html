@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ofertas vs CV — Match Inteligente de Empleos</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-badge">Devpost Hackathon POC</div>
+      <h1>Ofertas vs CV</h1>
+      <p class="subtitle">Filtrá los digests de empleo de tu Gmail y descubrí al instante qué ofertas coinciden con tu perfil sin leerlas todas.</p>
+    </header>
+
+    <div id="alertBox" class="alert hidden"></div>
+
+    <!-- Panel 1: Estado del CV -->
+    <section class="panel" id="cvPanel">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span>📄</span> Tu Curriculum Vitae
+        </h2>
+        <button id="btnChangeCv" class="btn btn-secondary hidden" style="padding: 0.4rem 0.8rem; font-size: 0.825rem;">Cambiar CV</button>
+      </div>
+
+      <!-- Estado: CV cargado -->
+      <div id="cvLoadedView" class="cv-status-box hidden">
+        <div class="cv-info">
+          <div class="cv-icon">PDF</div>
+          <div class="cv-details">
+            <h4 id="cvFilename">cv.pdf</h4>
+            <p id="cvMeta">Cargado y listo para comparar</p>
+          </div>
+        </div>
+        <span class="match-score-badge badge-yes" style="min-width: unset; padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+          Activo
+        </span>
+      </div>
+
+      <!-- Estado: Subir CV -->
+      <div id="cvUploadView" class="dropzone">
+        <div class="dropzone-icon">📥</div>
+        <p><strong>Arrastrá tu CV en PDF aquí</strong> o <span class="highlight">hacé clic para buscarlo</span></p>
+        <p style="font-size: 0.8rem; margin-top: 0.3rem; color: var(--text-light);">Formato aceptado: archivo .pdf</p>
+        <input type="file" id="cvFileInput" accept="application/pdf" style="display: none;">
+      </div>
+    </section>
+
+    <!-- Panel 2: Búsqueda y Evaluación -->
+    <section class="panel" id="searchPanel">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span>📬</span> Consulta en Gmail
+        </h2>
+      </div>
+
+      <form id="searchForm" class="search-form">
+        <div class="form-row">
+          <div class="form-group" style="flex: 2;">
+            <label for="gmailLabel">Etiqueta de Gmail:</label>
+            <input type="text" id="gmailLabel" placeholder="Ej: LinkedIn, Glassdoor, Empleos..." value="LinkedIn" required>
+          </div>
+
+          <div class="form-group" style="flex: 1;">
+            <label for="emailCount">Correos recientes a leer:</label>
+            <select id="emailCount">
+              <option value="1">1 correo más reciente</option>
+              <option value="2">2 correos más recientes</option>
+              <option value="3" selected>3 correos más recientes</option>
+              <option value="5">5 correos más recientes</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <button type="submit" id="btnProcess" class="btn btn-primary">
+            <span id="btnText">Buscar y Evaluar Ofertas</span>
+            <span id="btnSpinner" class="spinner hidden"></span>
+          </button>
+          <span id="processStatusText" style="font-size: 0.875rem; color: var(--text-muted);"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- Panel 3: Resultados -->
+    <section class="panel" id="resultsPanel">
+      <div class="results-header">
+        <h2 class="panel-title">
+          <span>🎯</span> Ofertas Encontradas y Evaluación de Match
+        </h2>
+        <span id="resultsCount" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;"></span>
+      </div>
+
+      <div id="resultsList" class="job-cards-list">
+        <div class="empty-state">
+          <p>Aún no realizaste ninguna búsqueda. Ingresá una etiqueta arriba para comenzar.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

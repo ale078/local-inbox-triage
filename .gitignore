@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local personal data and uploaded CV
+/devpost/learner-profile.md
+learn-ai-basics/devpost/learner-profile.md
+data/cv.pdf
+data/*.pdf
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
