@@ -1,3 +1,4 @@
+import os
 import json
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -6,7 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from services import pdf_service
+from services import pdf_service, gmail_service, parser_service
 
 # Load environment variables from .env if present
 load_dotenv()
@@ -25,6 +26,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 class ProcessRequest(BaseModel):
     label: str
     count: int = 3
+    email_user: str | None = None  # Optional override if not in env
 
 
 @app.get("/")
@@ -76,17 +78,60 @@ async def get_latest_matches():
 @app.post("/api/jobs/process")
 async def process_jobs(req: ProcessRequest):
     """
-    Process emails for the given label and evaluate matches.
-    Will be fully integrated in Slices 2 & 3.
+    Fetch emails for the given label via IMAP and extract job offers.
+    In Slice 2: extracts and returns all jobs with links.
+    In Slice 3: Gemini evaluates match against CV.
     """
     if not pdf_service.cv_exists():
         raise HTTPException(status_code=400, detail="Debes subir tu CV antes de procesar las ofertas.")
 
-    return {
-        "status": "ready_for_slices_2_and_3",
-        "message": f"Etiqueta '{req.label}' recibida para {req.count} correos.",
-        "jobs": []
-    }
+    # Allow setting email_user from request if provided and not yet in environment
+    if req.email_user and not os.environ.get("GMAIL_USER"):
+        os.environ["GMAIL_USER"] = req.email_user
+
+    try:
+        # 1. Fetch emails via IMAP
+        emails = gmail_service.fetch_emails_by_label(label=req.label, limit=req.count)
+        if not emails:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No se encontraron correos en la etiqueta '{req.label}'."
+            )
+
+        # 2. Extract job offers from email HTML digests
+        jobs = parser_service.parse_emails_to_jobs(emails)
+        if not jobs:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Se leyeron {len(emails)} correo(s), pero no se identificaron ofertas de empleo en el formato del mensaje."
+            )
+
+        # Add preview attributes for Slice 2 (Slice 3 will calculate real AI scores)
+        for idx, job in enumerate(jobs):
+            job.setdefault("match_percentage", 100 - (idx * 5) if idx < 10 else 50)
+            job.setdefault("verdict", "Extraído")
+            job.setdefault("suggestion", f"Oferta extraída directamente del correo '{job.get('email_subject', '')}'.")
+
+        # Save to latest_matches.json
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with open(LATEST_MATCHES_FILE, "w", encoding="utf-8") as f:
+            json.dump({"jobs": jobs}, f, ensure_ascii=False, indent=2)
+
+        return {
+            "status": "success",
+            "emails_read": len(emails),
+            "jobs_found": len(jobs),
+            "jobs": jobs
+        }
+
+    except HTTPException:
+        raise
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except ConnectionError as ce:
+        raise HTTPException(status_code=502, detail=str(ce))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error inesperado: {str(e)}")
 
 
 if __name__ == "__main__":

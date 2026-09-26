@@ -210,6 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const label = gmailLabelInput.value.trim();
     const count = parseInt(emailCountSelect.value, 10) || 3;
+    const emailUser = document.getElementById('gmailUser').value.trim() || null;
 
     if (!label) {
       showAlert('Por favor ingresá una etiqueta de Gmail.');
@@ -226,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/jobs/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: label, count: count })
+        body: JSON.stringify({ label: label, count: count, email_user: emailUser })
       });
 
       const data = await res.json();

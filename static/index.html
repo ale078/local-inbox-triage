@@ -58,18 +58,23 @@
 
       <form id="searchForm" class="search-form">
         <div class="form-row">
-          <div class="form-group" style="flex: 2;">
+          <div class="form-group" style="flex: 1.5;">
+            <label for="gmailUser">Tu correo de Gmail:</label>
+            <input type="email" id="gmailUser" placeholder="tu_cuenta@gmail.com">
+          </div>
+
+          <div class="form-group" style="flex: 1.5;">
             <label for="gmailLabel">Etiqueta de Gmail:</label>
-            <input type="text" id="gmailLabel" placeholder="Ej: LinkedIn, Glassdoor, Empleos..." value="LinkedIn" required>
+            <input type="text" id="gmailLabel" placeholder="Ej: LinkedIn, Glassdoor..." value="LinkedIn" required>
           </div>
 
           <div class="form-group" style="flex: 1;">
-            <label for="emailCount">Correos recientes a leer:</label>
+            <label for="emailCount">Correos recientes:</label>
             <select id="emailCount">
-              <option value="1">1 correo más reciente</option>
-              <option value="2">2 correos más recientes</option>
-              <option value="3" selected>3 correos más recientes</option>
-              <option value="5">5 correos más recientes</option>
+              <option value="1">1 correo</option>
+              <option value="2">2 correos</option>
+              <option value="3" selected>3 correos</option>
+              <option value="5">5 correos</option>
             </select>
           </div>
         </div>
