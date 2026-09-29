@@ -233,9 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       if (res.ok) {
         renderJobCards(data.jobs);
-        const quotaWarnings = (data.jobs || []).filter(job => (job.verdict || '').toLowerCase() === 'no' && (job.suggestion || '').toLowerCase().includes('límite de cuota'));
+        const quotaWarnings = (data.jobs || []).filter(job => (job.suggestion || '').toLowerCase().includes('límite de cuota'));
         if (quotaWarnings.length > 0) {
-          showAlert(`¡Análisis completado! Se evaluaron ${data.jobs ? data.jobs.length : 0} ofertas. Algunas quedaron fuera por límite de cuota de Gemini.`, 'warning');
+          showAlert(`¡Análisis completado! Se evaluaron ${data.jobs ? data.jobs.length : 0} ofertas. El servicio de Gemini limitó el lote, así que algunas quedaron fuera por cuota.`, 'warning');
         } else {
           showAlert(`¡Análisis completado! Se evaluaron ${data.jobs ? data.jobs.length : 0} ofertas.`, 'success');
         }
