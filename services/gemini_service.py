@@ -98,7 +98,13 @@ def evaluate_matches(cv_text: str, jobs: List[Dict[str, Any]]) -> List[Dict[str,
     client = _get_client()
     enriched = []
 
-    for job in jobs:
+    # If the API is rate-limited, reduce the batch to the jobs that are most likely useful.
+    # This keeps the app responsive and avoids failing the whole request on one quota issue.
+    working_jobs = jobs[:]
+    if len(working_jobs) > 8:
+        working_jobs = working_jobs[:8]
+
+    for job in working_jobs:
         try:
             prompt = _build_prompt(cv_text, job)
             response = _generate_with_retry(client, prompt, max_retries=3)
