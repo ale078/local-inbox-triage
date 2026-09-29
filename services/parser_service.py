@@ -1,6 +1,6 @@
 import re
 from typing import List, Dict, Any
-from urllib.parse import urlparse, parse_qs, urlunparse
+from urllib.parse import urlparse, parse_qs, urlunparse, urlencode
 from bs4 import BeautifulSoup
 
 
@@ -14,19 +14,46 @@ IGNORED_PATTERNS = [
 ]
 
 
+TRACKING_PARAMS = {
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "utm_id", "utm_name", "utm_placement", "utm_creative",
+    "gclid", "fbclid", "mc_cid", "mc_eid", "dclid", "msclkid",
+    "igshid", "hsa_acc", "hsa_ad", "hsa_cam", "hsa_grp", "hsa_kw",
+    "hsa_mt", "hsa_net", "hsa_src", "hsa_ver", "hsa_tgt"
+}
+
+
+def normalize_text(value: str) -> str:
+    """Normalize title/text for comparison and dedupe."""
+    if not value:
+        return ""
+    return re.sub(r"\s+", " ", value).strip().lower()
+
+
 def clean_job_url(raw_url: str) -> str:
     """Clean tracking params from URL to prevent duplicate listings."""
     if not raw_url:
         return ""
     try:
         parsed = urlparse(raw_url)
-        # Keep scheme and netloc and path, strip query if it's mostly tracking tokens
+        clean_query = []
+        for key, values in parse_qs(parsed.query, keep_blank_values=True).items():
+            if key.lower() not in TRACKING_PARAMS and key.lower().startswith("utm_") is False:
+                clean_query.append((key, values[-1]))
+        clean_url = urlunparse((
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            urlencode(clean_query),
+            "",
+        ))
+
         if "linkedin.com" in parsed.netloc and "/jobs/view/" in parsed.path:
-            # Keep just the base path for LinkedIn jobs
             return f"https://www.linkedin.com{parsed.path}"
-        return raw_url
+        return clean_url.lower()
     except Exception:
-        return raw_url
+        return raw_url.strip().lower()
 
 
 def is_job_link(href: str, text: str) -> bool:
@@ -61,7 +88,7 @@ def extract_jobs_from_email_html(html_content: str, email_subject: str = "", ema
 
     soup = BeautifulSoup(html_content, "html.parser")
     found_jobs = []
-    seen_links = set()
+    seen_jobs = set()
 
     # Find all anchor tags
     anchors = soup.find_all("a", href=True)
@@ -74,20 +101,19 @@ def extract_jobs_from_email_html(html_content: str, email_subject: str = "", ema
             continue
 
         clean_url = clean_job_url(href)
-        if clean_url in seen_links:
+        normalized_title = normalize_text(text)
+        dedupe_key = (clean_url, normalized_title)
+        if not clean_url or dedupe_key in seen_jobs:
             continue
 
         # Extract title and context
         title = text
-        # If the anchor text was short or a button (e.g. "Ver empleo"), look at parent container
-        parent = a.find_parent(["td", "div", "li", "tr"])
+        parent = a.find_parent(["td", "div", "li", "tr", "p", "span"])
         context_text = ""
 
         if parent:
             parent_full_text = parent.get_text(separator=" | ", strip=True)
-            # Remove the link text itself from the context
             context_text = parent_full_text.replace(text, "").strip(" | ")
-            # If the link text is just "Ver empleo" or similar, search inside parent for a heading or title
             if len(text.split()) < 3 and len(context_text) > 10:
                 heading = parent.find(["h1", "h2", "h3", "h4", "strong", "b"])
                 if heading and len(heading.get_text(strip=True)) > 5:
@@ -96,12 +122,23 @@ def extract_jobs_from_email_html(html_content: str, email_subject: str = "", ema
         if not title or len(title) < 4:
             continue
 
-        seen_links.add(clean_url)
+        title = title.strip()
+        if len(title) > 120:
+            title = title[:120].strip()
+
+        context_value = context_text[:120].strip() if context_text else ""
+        if not context_value and "glassdoor" not in email_subject.lower() and "linkedin" not in email_subject.lower():
+            context_value = ""
+
+        if not context_value:
+            context_value = ""
+
+        seen_jobs.add(dedupe_key)
         found_jobs.append({
-            "title": title[:100],
-            "company_or_context": (context_text[:120] if context_text else email_subject[:80]),
-            "link": href,
-            "snippet": (context_text[:200] if context_text else title),
+            "title": title,
+            "company_or_context": context_value,
+            "link": clean_url,
+            "snippet": context_value or title,
             "email_subject": email_subject,
             "email_date": email_date
         })
@@ -112,7 +149,7 @@ def extract_jobs_from_email_html(html_content: str, email_subject: str = "", ema
 def parse_emails_to_jobs(emails: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Process a list of fetched emails and combine all extracted jobs."""
     all_jobs = []
-    seen_urls = set()
+    seen_jobs = set()
 
     for email_item in emails:
         html = email_item.get("html_body", "")
@@ -121,9 +158,15 @@ def parse_emails_to_jobs(emails: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
         jobs = extract_jobs_from_email_html(html, email_subject=subject, email_date=date)
         for job in jobs:
-            clean_url = clean_job_url(job["link"])
-            if clean_url not in seen_urls:
-                seen_urls.add(clean_url)
-                all_jobs.append(job)
+            job_key = (
+                clean_job_url(job.get("link", "")),
+                normalize_text(job.get("title", "")),
+            )
+            if job_key in seen_jobs:
+                continue
+            if not job_key[0]:
+                continue
+            seen_jobs.add(job_key)
+            all_jobs.append(job)
 
     return all_jobs
