@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from services import pdf_service, gmail_service, parser_service
+from services import pdf_service, gmail_service, parser_service, gemini_service
 
 # Load environment variables from .env if present
 load_dotenv()
@@ -106,11 +106,9 @@ async def process_jobs(req: ProcessRequest):
                 detail=f"Se leyeron {len(emails)} correo(s), pero no se identificaron ofertas de empleo en el formato del mensaje."
             )
 
-        # Add preview attributes for Slice 2 (Slice 3 will calculate real AI scores)
-        for idx, job in enumerate(jobs):
-            job.setdefault("match_percentage", 100 - (idx * 5) if idx < 10 else 50)
-            job.setdefault("verdict", "Extraído")
-            job.setdefault("suggestion", f"Oferta extraída directamente del correo '{job.get('email_subject', '')}'.")
+        # 3. Read CV text and evaluate with Gemini
+        cv_text = pdf_service.extract_cv_text()
+        jobs = gemini_service.evaluate_matches(cv_text=cv_text, jobs=jobs)
 
         # Save to latest_matches.json
         DATA_DIR.mkdir(parents=True, exist_ok=True)

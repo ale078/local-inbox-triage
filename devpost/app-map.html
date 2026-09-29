@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App Map — Ofertas vs CV</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --line: #dfe7f1;
+      --text: #1f2937;
+      --muted: #5b6474;
+      --primary: #2563eb;
+      --accent: #10b981;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 2rem 1.2rem 3rem;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.2rem 1.3rem;
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+      margin-bottom: 1rem;
+    }
+    h1, h2, h3 { margin-top: 0; }
+    .subtitle { color: var(--muted); }
+    .diagram {
+      background: #f5f8ff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .diagram svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .route { margin: 0; padding-left: 1.2rem; }
+    .route li { margin-bottom: 0.8rem; }
+    .chip {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0f172a;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      margin-right: 0.4rem;
+    }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      background: #f1f5f9;
+      padding: 0.1rem 0.35rem;
+      border-radius: 6px;
+    }
+    details {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 0.5rem 0.8rem;
+    }
+    details + details { margin-top: 0.7rem; }
+    .small { color: var(--muted); font-size: 0.96rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <h1>App Map — Ofertas vs CV</h1>
+      <p class="subtitle">La idea es convertir un digest de Gmail en una lista de ofertas con match contra tu CV, sin leer cada correo ni cada anuncio a mano.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Visión general</h2>
+      <p>La app local corre en Python con FastAPI y sirve una interfaz web. El flujo principal es: <strong>subir CV</strong> → <strong>elegir etiqueta de Gmail</strong> → <strong>leer esos mails</strong> → <strong>extraer ofertas</strong> → <strong>evaluar afinidad con Gemini</strong> → <strong>mostrar tarjetas con porcentaje, veredicto y enlace</strong>.</p>
+      <div class="diagram">
+        <svg viewBox="0 0 860 220" role="img" aria-label="Diagrama del flujo principal de la app">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"></path>
+            </marker>
+          </defs>
+          <rect x="20" y="60" width="140" height="80" rx="12" fill="#dbeafe" stroke="#2563eb" />
+          <text x="90" y="95" text-anchor="middle" font-size="16" fill="#0f172a">CV PDF</text>
+          <text x="90" y="117" text-anchor="middle" font-size="14" fill="#0f172a">data/cv.pdf</text>
+
+          <line x1="160" y1="100" x2="230" y2="100" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)" />
+
+          <rect x="230" y="60" width="170" height="80" rx="12" fill="#dcfce7" stroke="#10b981" />
+          <text x="315" y="95" text-anchor="middle" font-size="16" fill="#0f172a">Gmail IMAP</text>
+          <text x="315" y="117" text-anchor="middle" font-size="14" fill="#0f172a">etiqueta + N mails</text>
+
+          <line x1="400" y1="100" x2="470" y2="100" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)" />
+
+          <rect x="470" y="60" width="170" height="80" rx="12" fill="#fef3c7" stroke="#f59e0b" />
+          <text x="555" y="95" text-anchor="middle" font-size="16" fill="#0f172a">Parser HTML</text>
+          <text x="555" y="117" text-anchor="middle" font-size="14" fill="#0f172a">ofertas + links</text>
+
+          <line x1="640" y1="100" x2="710" y2="100" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)" />
+
+          <rect x="710" y="60" width="130" height="80" rx="12" fill="#ede9fe" stroke="#7c3aed" />
+          <text x="775" y="95" text-anchor="middle" font-size="16" fill="#0f172a">Gemini</text>
+          <text x="775" y="117" text-anchor="middle" font-size="14" fill="#0f172a">match + score</text>
+
+          <rect x="320" y="160" width="260" height="40" rx="10" fill="#e0f2fe" stroke="#0ea5e9" />
+          <text x="450" y="185" text-anchor="middle" font-size="15" fill="#0f172a">Tarjetas en la interfaz + JSON local</text>
+          <line x1="555" y1="140" x2="555" y2="160" stroke="#0ea5e9" stroke-width="3" marker-end="url(#arrow)" />
+        </svg>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Ruta de referencia</h2>
+      <ol class="route">
+        <li><span class="chip">Entrada</span> <code>main.py</code> sirve la app web y expone <code>GET /api/cv/status</code> y <code>POST /api/cv/upload</code>.</li>
+        <li><span class="chip">Procesado</span> <code>services/pdf_service.py</code> guarda <code>data/cv.pdf</code> y extrae texto para comparar contra las ofertas.</li>
+        <li><span class="chip">Extracción</span> <code>services/gmail_service.py</code> y <code>services/parser_service.py</code> buscan enlaces y títulos dentro de los digest de Gmail.</li>
+        <li><span class="chip">Evaluación</span> <code>services/gemini_service.py</code> envía cada oferta contra el CV, devuelve porcentaje, veredicto y sugerencia.</li>
+        <li><span class="chip">Resultado</span> <code>static/index.html</code> y <code>static/app.js</code> renderizan tarjetas y permiten abrir cada oferta directa.</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <h2>“To change this, start here”</h2>
+      <details open>
+        <summary><strong>Quiero cambiar la lógica de match</strong></summary>
+        <p>Empezá por <code>services/gemini_service.py</code>: ahí está el prompt y la respuesta estructurada. Cambiá el texto del prompt, el esquema de salida o el filtro de score antes de tocar la UI.</p>
+      </details>
+      <details>
+        <summary><strong>Quiero cambiar cómo se muestran las ofertas</strong></summary>
+        <p>Mirá <code>static/app.js</code> y su función <code>renderJobCards</code>. La visualización está separada de la lógica de backend y es el punto más seguro para ajustar badges, textos o columnas.</p>
+      </details>
+      <details>
+        <summary><strong>Quiero cambiar la forma de cargar el CV</strong></summary>
+        <p>Verificá <code>main.py</code> para la ruta de upload y <code>services/pdf_service.py</code> para el almacenamiento en disco. Si querés cambiar qué archivo guardan o el nombre del archivo, ese es el lugar.</p>
+      </details>
+    </div>
+
+    <div class="panel">
+      <h2>Practice to reuse</h2>
+      <p>La práctica útil aquí fue definir un <strong>kernel observable</strong> y luego verificarlo paso a paso: un CV cargado, una etiqueta en Gmail, una oferta extraída y una evaluación legible. La documentación en <code>devpost/scope.md</code> y <code>devpost/prd.md</code> hizo explícita la frontera del POC, y el chequeo en <code>main.py</code> + <code>static/app.js</code> mostró si el comportamiento general seguía encajando.</p>
+      <p class="small">El mismo patrón funciona en otros proyectos: elegir el “hecho observable” más valioso, probarlo en la menor capa posible, y mantener un mapa claro de entrada → lógica → salida.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Cómo reproducirlo</h2>
+      <p>Desde la raíz del proyecto:</p>
+      <pre><code>python -m uvicorn main:app --reload --port 8000</code></pre>
+      <p>Luego abrí <code>http://localhost:8000</code> en el navegador. La app sigue siendo una caché local y no requiere despliegue para mostrar el POC.</p>
+      <p class="small">Este mapa es una instantánea del código y puede quedar atrás si cambian las rutas o la lógica; se mantiene claro y útil sin depender de red ni de servicios externos.</p>
+    </div>
+  </div>
+</body>
+</html>

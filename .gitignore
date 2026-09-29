@@ -19,6 +19,7 @@ ENV/
 learn-ai-basics/devpost/learner-profile.md
 data/cv.pdf
 data/*.pdf
+data/*.json
 
 # IDE and OS
 .vscode/

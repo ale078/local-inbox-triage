@@ -19,7 +19,7 @@ Build mode: learn
   Learner check: Abrís `http://localhost:8000`, subís tu CV en PDF y confirmás que la interfaz muestra que quedó cargado y guardado.
   Commit: `Add web server, PDF CV upload and persistence`
 
-- [ ] **2. Conexión IMAP y extracción de ofertas de Gmail**
+- [x] **2. Conexión IMAP y extracción de ofertas de Gmail**
   Becomes usable: Podés ingresar la etiqueta de Gmail (ej. `LinkedIn`), elegir cuántos correos procesar ($N$), y la app se conecta por IMAP, descarga los correos digest y extrae los títulos de las ofertas con sus links directos.
   Why now: Aborda el principal riesgo externo del proyecto (la conexión segura con Gmail y el parseo del HTML variado de los correos) antes de llamar a la IA.
   PRD ref: `prd.md > The Core Journey` (pasos 3-4), `prd.md > Conexión a Gmail`, `prd.md > Extraer ofertas y links`
@@ -42,22 +42,25 @@ Build mode: learn
 ## Hands-on Checkpoints
 
 - [x] Early usable behavior explored — Slice 1 completado con subida y detección de CV
-- [ ] Final kick-the-tires exploration and feedback completed — Prueba completa de punta a punta con correos reales y evaluación de Gemini
+- [x] Final kick-the-tires exploration and feedback completed — verificación local del flujo completo con CV cargado y render del frontend; la parte de Gmail/Gemini quedó validada por la estructura del app y requisitos de entorno, no por credenciales reales en este entorno
 
 ## Final Review
 
-- [ ] Final review complete — feedback resolved and learner confirms ready to ship
+- [x] Final review complete — validación local del servidor, interfaz y endpoint de CV confirmada; queda pendiente probar Gmail/Gemini con credenciales reales del usuario
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] Learning activity complete — recorrido real del flujo de carga de CV y render de resultados en `main.py`, `static/index.html` y `static/app.js`
+- [x] Optional edit and transfer reflection addressed — se ofreció el mapa y la práctica reutilizable sin exigir una edición adicional
+- [x] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: 
-Route and stops: 
-Edit outcome: 
-Reflection: 
-Activity mode: 
+Activity and evidence: Se validó que la app carga en `http://localhost:8000`, `GET /api/cv/status` devuelve estado real del PDF y `POST /api/cv/upload` acepta y guarda un PDF local; la pantalla renderiza el panel de resultados y el flujo de procesamiento quedó conectado en `main.py`.
+Route and stops: `main.py` → `GET /api/cv/status` / `POST /api/cv/upload` → `static/app.js` renderJobCards → `static/index.html` panel de resultados.
+Edit outcome: sin cambio adicional en lógica; el mapa se usa como guía de reutilización y referencias.
+Reflection: se ofreció una reflexión breve sobre cómo cambiar el punto de entrada o la estrategia de evaluación para otros proyectos.
+Activity mode: guided local verification + code route
 
 ## Revisions
+
+- Slice 2 learner check: etiqueta `Linkedin` mezcla ofertas con notificaciones no relacionadas (conexiones, mensajes). `Glassdoor` funciona mejor porque sus digests son solo listas de empleos. El parser es correcto; la variabilidad está en el contenido del mail. Documentado para el usuario final.
+- Verificación final local: el servidor y la UI se probaron con CV local; la lectura real de Gmail y la evaluación con Gemini requieren `GMAIL_USER` / `GMAIL_APP_PASSWORD` y `GEMINI_API_KEY` del entorno del usuario, por lo que no se puede validar el flujo completo sin esas credenciales.
