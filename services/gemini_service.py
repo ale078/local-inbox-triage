@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from typing import List, Dict, Any
 from google import genai
 from google.genai import types
@@ -59,6 +60,33 @@ def _build_prompt(cv_text: str, job: Dict[str, Any]) -> str:
     )
 
 
+def _generate_with_retry(client: genai.Client, prompt: str, max_retries: int = 3):
+    """Retry transient quota/rate-limit errors without failing the whole batch."""
+    last_error = None
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            return client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_json_schema=MATCH_SCHEMA,
+                    temperature=0.2,
+                ),
+            )
+        except Exception as exc:
+            last_error = exc
+            message = str(exc).upper()
+            is_rate_limited = "429" in message or "RESOURCE_EXHAUSTED" in message or "RATE_LIMIT" in message
+            if is_rate_limited and attempt < max_retries:
+                time.sleep(2 ** (attempt - 1))
+                continue
+            raise
+
+    raise last_error
+
+
 def evaluate_matches(cv_text: str, jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Evaluate each job offer against the CV using Gemini.
@@ -73,15 +101,7 @@ def evaluate_matches(cv_text: str, jobs: List[Dict[str, Any]]) -> List[Dict[str,
     for job in jobs:
         try:
             prompt = _build_prompt(cv_text, job)
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_json_schema=MATCH_SCHEMA,
-                    temperature=0.2,
-                ),
-            )
+            response = _generate_with_retry(client, prompt, max_retries=3)
             result = json.loads(response.text)
             job["match_percentage"] = max(0, min(100, int(result.get("match_percentage", 0))))
             job["verdict"] = result.get("verdict", "No")
@@ -89,8 +109,11 @@ def evaluate_matches(cv_text: str, jobs: List[Dict[str, Any]]) -> List[Dict[str,
         except Exception as e:
             # On failure, mark with neutral values so the rest still show
             job.setdefault("match_percentage", 0)
-            job.setdefault("verdict", "Error")
-            job.setdefault("suggestion", f"No se pudo evaluar esta oferta: {str(e)[:80]}")
+            job.setdefault("verdict", "No")
+            if "429" in str(e).upper() or "RESOURCE_EXHAUSTED" in str(e).upper():
+                job.setdefault("suggestion", "La evaluación de esta oferta se reintentó y quedó fuera por límite de cuota de la API; revisá más tarde o probá con menos ofertas.")
+            else:
+                job.setdefault("suggestion", f"No se pudo evaluar esta oferta: {str(e)[:80]}")
 
         enriched.append(job)
 
