@@ -27,19 +27,52 @@ MATCH_SCHEMA = {
 }
 
 
-def _get_client() -> genai.Client:
-    """Create a Gemini client using available API key from env."""
-    api_key = (
-        os.environ.get("GEMINI_API_KEY")
-        or os.environ.get("gemini_key_2.5")
-        or os.environ.get("GOOGLE_API_KEY")
+def _resolve_key_value(val: str | None) -> str | None:
+    """Resolve API key, including cases where env var contains the name of another env var."""
+    if not val:
+        return None
+    val = val.strip()
+    if val in os.environ and os.environ[val] != val:
+        return os.environ[val].strip()
+    return val
+
+
+def _get_client_and_model() -> tuple[genai.Client, str]:
+    """
+    Get client and model.
+    Prioritizes gemini_key_3.5 (with gemini-3.8-flash).
+    If gemini_key_3.5 has depleted credits or errors, falls back to gemini_key_2.5 (gemini-2.5-flash).
+    """
+    key_35 = _resolve_key_value(os.environ.get("gemini_key_3.5"))
+    key_25 = (
+        _resolve_key_value(os.environ.get("gemini_key_2.5"))
+        or _resolve_key_value(os.environ.get("GEMINI_API_KEY"))
+        or _resolve_key_value(os.environ.get("GOOGLE_API_KEY"))
     )
-    if not api_key:
-        raise ValueError(
-            "No se encontró la API Key de Gemini. "
-            "Definí GEMINI_API_KEY en tus variables de entorno o en el archivo .env."
-        )
-    return genai.Client(api_key=api_key)
+
+    # 1. Try gemini_key_3.5 first if present
+    if key_35 and key_35 != key_25:
+        try:
+            client_35 = genai.Client(api_key=key_35)
+            # Lightweight probe to check if billing/credits allow inference
+            client_35.models.generate_content(model="gemini-3.8-flash", contents="ping")
+            return client_35, "gemini-3.8-flash"
+        except Exception:
+            # If 3.5 is depleted or fails, fall through to 2.5
+            pass
+
+    # 2. Use gemini_key_2.5 (or GEMINI_API_KEY/GOOGLE_API_KEY)
+    if key_25:
+        return genai.Client(api_key=key_25), "gemini-2.5-flash"
+
+    # If only 3.5 was configured but failed
+    if key_35:
+        return genai.Client(api_key=key_35), "gemini-3.8-flash"
+
+    raise ValueError(
+        "No se encontró una API Key válida de Gemini. "
+        "Definí gemini_key_2.5, gemini_key_3.5 o GEMINI_API_KEY en tus variables de entorno."
+    )
 
 
 def _build_prompt(cv_text: str, job: Dict[str, Any]) -> str:
@@ -60,14 +93,14 @@ def _build_prompt(cv_text: str, job: Dict[str, Any]) -> str:
     )
 
 
-def _generate_with_retry(client: genai.Client, prompt: str, max_retries: int = 3):
+def _generate_with_retry(client: genai.Client, model: str, prompt: str, max_retries: int = 3):
     """Retry transient quota/rate-limit errors without failing the whole batch."""
     last_error = None
 
     for attempt in range(1, max_retries + 1):
         try:
             return client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=model,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -95,7 +128,7 @@ def evaluate_matches(cv_text: str, jobs: List[Dict[str, Any]]) -> List[Dict[str,
     if not cv_text or not jobs:
         return jobs
 
-    client = _get_client()
+    client, model = _get_client_and_model()
     enriched = []
 
     # If the API is rate-limited, reduce the batch to the jobs that are most likely useful.
@@ -107,7 +140,7 @@ def evaluate_matches(cv_text: str, jobs: List[Dict[str, Any]]) -> List[Dict[str,
     for job in working_jobs:
         try:
             prompt = _build_prompt(cv_text, job)
-            response = _generate_with_retry(client, prompt, max_retries=3)
+            response = _generate_with_retry(client, model, prompt, max_retries=3)
             result = json.loads(response.text)
             job["match_percentage"] = max(0, min(100, int(result.get("match_percentage", 0))))
             job["verdict"] = result.get("verdict", "No")
