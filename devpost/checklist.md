@@ -29,7 +29,7 @@ Build mode: learn
   Learner check: Ingresás tu etiqueta en la app web y ves la lista de ofertas y links extraídos directamente desde tus correos.
   Commit: `Add Gmail IMAP fetch and digest HTML parser`
 
-- [ ] **3. Evaluación de afinidad con Gemini y tarjetas interactivas de resultados**
+- [x] **3. Evaluación de afinidad con Gemini y tarjetas interactivas de resultados**
   Becomes usable: El flujo completo de punta a punta: Gemini compara el texto de tu CV contra cada oferta extraída, calcula el % de match, genera el veredicto (`Sí`/`No`/`Puede ser`) y la sugerencia de una línea, guardando los resultados en `data/latest_matches.json` y mostrándolos en tarjetas interactivas ordenadas por afinidad.
   Why now: Conecta todas las piezas y entrega el núcleo único del producto (el filtro inteligente para no leer digests manualmente).
   PRD ref: `prd.md > The Core Journey` (pasos 5-7), `prd.md > Match contra el CV`
