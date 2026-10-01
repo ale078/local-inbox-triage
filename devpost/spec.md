@@ -234,3 +234,8 @@ hackathon/
 
 ### Aspectos abiertos para verificar durante el build
 - Probar un correo real de la etiqueta de Gmail del usuario para calibrar el extractor HTML con los selectores de los digests que efectivamente recibe (ej. LinkedIn).
+
+## Sharing and Submission
+- **Repositorio público en GitHub:** https://github.com/ale078/local-inbox-triage.git
+- **Video de demostración:** Pendiente de grabación y enlace.
+
