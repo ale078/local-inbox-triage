@@ -79,6 +79,38 @@ def is_job_link(href: str, text: str) -> bool:
     return has_job_url or (has_job_text and ("http" in href_lower))
 
 
+def resolve_job_link(raw_url: str) -> str:
+    """Resolve an authentic, working job URL for user interaction."""
+    if not raw_url:
+        return ""
+    raw_url = raw_url.strip()
+    try:
+        parsed = urlparse(raw_url)
+        netloc = parsed.netloc.lower()
+
+        # 1. Glassdoor: extract job ID if present (jobListingId or jl)
+        if "glassdoor." in netloc:
+            qs = parse_qs(parsed.query)
+            for k, vals in qs.items():
+                if k.lower() in ("joblistingid", "jl") and vals:
+                    jid = vals[0]
+                    domain = parsed.netloc if "glassdoor." in parsed.netloc else "www.glassdoor.com.ar"
+                    return f"https://{domain}/job-listing/-jl.htm?jl={jid}"
+            return raw_url
+
+        # 2. LinkedIn: extract numeric job ID if present for direct canonical link
+        if "linkedin.com" in netloc:
+            m = re.search(r'/jobs/view/(\d+)', raw_url)
+            if m:
+                return f"https://www.linkedin.com/jobs/view/{m.group(1)}/"
+            return raw_url
+
+    except Exception:
+        pass
+
+    return raw_url
+
+
 def extract_jobs_from_email_html(html_content: str, email_subject: str = "", email_date: str = "") -> List[Dict[str, Any]]:
     """
     Extract job titles, companies, links, and snippets from an HTML email digest.
@@ -100,10 +132,11 @@ def extract_jobs_from_email_html(html_content: str, email_subject: str = "", ema
         if not is_job_link(href, text):
             continue
 
-        clean_url = clean_job_url(href)
+        working_link = resolve_job_link(href)
+        clean_url = clean_job_url(working_link or href)
         normalized_title = normalize_text(text)
         dedupe_key = (clean_url, normalized_title)
-        if not clean_url or dedupe_key in seen_jobs:
+        if not working_link or dedupe_key in seen_jobs:
             continue
 
         # Extract title and context
@@ -119,6 +152,24 @@ def extract_jobs_from_email_html(html_content: str, email_subject: str = "", ema
                 if heading and len(heading.get_text(strip=True)) > 5:
                     title = heading.get_text(strip=True)
 
+        # Parse Glassdoor compound text (Company 4.0 ★ Job Title Location Age)
+        context_value = context_text[:120].strip() if context_text else ""
+        if "★" in text:
+            parts = text.split("★")
+            comp_raw = parts[0].strip()
+            comp_cand = re.sub(r'\s*\d+\.\d+$', '', comp_raw).strip()
+            rest = parts[1].strip()
+            title_cand = re.sub(
+                r'\s*(?:Buenos Aires|Thames|Remoto|Argentina|\b\d+\s*[hdms]\b|Candidatura\s+r\w+).*$',
+                '',
+                rest,
+                flags=re.IGNORECASE
+            ).strip()
+            if title_cand and len(title_cand) >= 4:
+                title = title_cand
+            if comp_cand:
+                context_value = comp_cand
+
         if not title or len(title) < 4:
             continue
 
@@ -126,18 +177,14 @@ def extract_jobs_from_email_html(html_content: str, email_subject: str = "", ema
         if len(title) > 120:
             title = title[:120].strip()
 
-        context_value = context_text[:120].strip() if context_text else ""
         if not context_value and "glassdoor" not in email_subject.lower() and "linkedin" not in email_subject.lower():
-            context_value = ""
-
-        if not context_value:
             context_value = ""
 
         seen_jobs.add(dedupe_key)
         found_jobs.append({
             "title": title,
             "company_or_context": context_value,
-            "link": clean_url,
+            "link": working_link,
             "snippet": context_value or title,
             "email_subject": email_subject,
             "email_date": email_date
