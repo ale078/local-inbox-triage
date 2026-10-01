@@ -26,3 +26,11 @@ data/*.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Agent skills and local tools
+.agents/
+.claude/
+agent/
+learn-ai-basics/
+skills-lock.json
+
